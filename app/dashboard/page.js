@@ -5,12 +5,7 @@ import RoleToggle from "@/components/RoleToggle";
 import BalanceSummary from "@/components/BalanceSummary";
 import TransactionsTable from "@/components/TransactionsTable";
 
-const SEED_SELLERS = [
-  { token: "seed-token-abebe-001", name: "Abebe Coffee Co." },
-  { token: "seed-token-mwangi-002", name: "Mwangi Media" },
-  { token: "seed-token-beats-003", name: "BeatForge NG" },
-  { token: "seed-token-adwoa-004", name: "Adwoa Designs" },
-];
+import { SEED_SELLERS } from "@/lib/constants";
 
 export default function DashboardPage() {
   const [role, setRole] = useState("buyer");

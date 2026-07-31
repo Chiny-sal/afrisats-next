@@ -4,6 +4,7 @@ import { COUNTRY_FLAGS } from "@/lib/constants";
 import { sanitizeString } from "@/lib/validators";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/session";
+import { getSellerTokenFromRequest } from "@/lib/sellerToken";
 
 export async function POST(request) {
   const ip = getClientIp(request);
@@ -56,7 +57,7 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  const token = request.headers.get("x-seller-token");
+  const token = getSellerTokenFromRequest(request);
   if (!token) {
     return NextResponse.json({ error: "X-Seller-Token header required" }, { status: 401 });
   }

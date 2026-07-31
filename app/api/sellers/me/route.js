@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSellerByToken, publicSeller } from "@/lib/store";
+import { getSellerTokenFromRequest } from "@/lib/sellerToken";
 
 export async function GET(request) {
-  const token = request.headers.get("x-seller-token");
+  const token = getSellerTokenFromRequest(request);
   if (!token) {
     return NextResponse.json({ error: "X-Seller-Token header required" }, { status: 401 });
   }

@@ -6,6 +6,7 @@ import {
   COUNTRY_FLAGS,
   DIGITAL_CATEGORIES,
   PHYSICAL_CATEGORIES,
+  SEED_SELLERS,
 } from "@/lib/constants";
 import LivePreviewCard from "@/components/LivePreviewCard";
 import { useToast } from "@/components/Toast";
@@ -15,6 +16,7 @@ function SellPageContent() {
   const [sellerToken, setSellerToken] = useState("");
   const [sellerInfo, setSellerInfo] = useState(null);
   const [showListingForm, setShowListingForm] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [myListings, setMyListings] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,26 +40,58 @@ function SellPageContent() {
     delivery_value: "",
   });
 
+  async function activateSellerSession(token) {
+    const trimmed = token.trim();
+    const res = await fetch("/api/sellers/me", {
+      headers: { "X-Seller-Token": trimmed },
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    localStorage.setItem("afrisats_seller_token", trimmed);
+    setSellerToken(trimmed);
+    setSellerInfo(data.seller);
+    setShowListingForm(true);
+    await fetchListings(trimmed);
+    return true;
+  }
+
+  function clearSellerSession() {
+    localStorage.removeItem("afrisats_seller_token");
+    setSellerToken("");
+    setSellerInfo(null);
+    setShowListingForm(false);
+    setMyListings([]);
+  }
+
   useEffect(() => {
-    const stored = localStorage.getItem("afrisats_seller_token");
-    if (stored) {
-      setSellerToken(stored);
-      setShowListingForm(true);
-      fetchSeller(stored);
-      fetchListings(stored);
+    async function initSession() {
+      const stored = localStorage.getItem("afrisats_seller_token")?.trim();
+      if (stored) {
+        const ok = await activateSellerSession(stored);
+        if (!ok) {
+          localStorage.removeItem("afrisats_seller_token");
+          showToast("Your seller session expired — please sign in again.", "error");
+        }
+      }
+      setSessionLoading(false);
     }
+    initSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchSeller(token) {
     try {
       const res = await fetch("/api/sellers/me", {
-        headers: { "X-Seller-Token": token },
+        headers: { "X-Seller-Token": token.trim() },
       });
       if (res.ok) {
         const data = await res.json();
         setSellerInfo(data.seller);
+        return true;
       }
     } catch {}
+    return false;
   }
 
   async function fetchListings(token) {
@@ -93,6 +127,7 @@ function SellPageContent() {
       setSellerInfo(data.seller);
       setShowListingForm(true);
       showToast("Seller account created! Token saved.");
+      fetchListings(data.seller_token);
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -102,6 +137,12 @@ function SellPageContent() {
 
   async function handleListProduct(e) {
     e.preventDefault();
+    if (!sellerToken) {
+      showToast("No seller session — register or pick a demo seller first.", "error");
+      setShowListingForm(false);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = { ...itemForm };
@@ -113,12 +154,20 @@ function SellPageContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Seller-Token": sellerToken,
+          "X-Seller-Token": sellerToken.trim(),
         },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearSellerSession();
+          throw new Error(
+            "Seller session invalid — register again or pick a demo seller below."
+          );
+        }
+        throw new Error(data.error);
+      }
 
       showToast("Product listed successfully!");
       setItemForm({
@@ -156,6 +205,28 @@ function SellPageContent() {
       ? DIGITAL_CATEGORIES
       : PHYSICAL_CATEGORIES;
 
+  async function handleSeedSellerLogin(token) {
+    setSubmitting(true);
+    const ok = await activateSellerSession(token);
+    if (ok) {
+      showToast("Signed in as demo seller.");
+    } else {
+      showToast(
+        "Demo seller not found — run npm run db:seed to load seed accounts.",
+        "error"
+      );
+    }
+    setSubmitting(false);
+  }
+
+  if (sessionLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gold border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 className="mb-2 font-display text-3xl font-bold">Sell on AfriSats</h1>
@@ -168,6 +239,29 @@ function SellPageContent() {
           <h2 className="mb-4 font-display text-lg font-semibold">
             Panel A — Become a Seller
           </h2>
+
+          <div className="mb-6 rounded-lg border border-gold/30 bg-gold/10 p-4">
+            <p className="mb-3 text-sm text-gold">
+              Demo hackathon? Sign in as a seed seller (requires{" "}
+              <code className="text-xs">npm run db:seed</code>):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SEED_SELLERS.map((s) => (
+                <button
+                  key={s.token}
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleSeedSellerLogin(s.token)}
+                  className="rounded-lg border border-white/10 bg-surface px-3 py-2 text-sm hover:border-gold/50"
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="mb-4 text-center text-xs text-muted">— or register a new seller —</p>
+
           <form onSubmit={handleBecomeSeller} className="grid gap-4 sm:grid-cols-2">
             <input
               placeholder="Name *"
@@ -230,9 +324,20 @@ function SellPageContent() {
             <h2 className="mb-1 font-display text-lg font-semibold">
               Panel B — List a Product
             </h2>
-            {sellerInfo && (
+            {sellerInfo ? (
               <p className="mb-4 text-xs text-muted">
                 Selling as {sellerInfo.name} ({sellerInfo.country})
+              </p>
+            ) : (
+              <p className="mb-4 text-xs text-coral">
+                Seller session invalid —{" "}
+                <button
+                  type="button"
+                  onClick={clearSellerSession}
+                  className="underline"
+                >
+                  sign in again
+                </button>
               </p>
             )}
 

@@ -5,13 +5,14 @@ import {
   getSellerByToken,
 } from "@/lib/store";
 import { getBuyerSessionId } from "@/lib/session";
+import { getSellerTokenFromRequest } from "@/lib/sellerToken";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role") || "buyer";
 
   if (role === "seller") {
-    const token = request.headers.get("x-seller-token");
+    const token = getSellerTokenFromRequest(request);
     if (!token) {
       return NextResponse.json({ error: "X-Seller-Token required for seller view" }, { status: 401 });
     }

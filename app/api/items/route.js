@@ -7,6 +7,7 @@ import {
 } from "@/lib/store";
 import { validateItemPayload, validateItemId } from "@/lib/validators";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { getSellerTokenFromRequest } from "@/lib/sellerToken";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +23,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const token = request.headers.get("x-seller-token");
+  const token = getSellerTokenFromRequest(request);
   if (!token) {
     return NextResponse.json({ error: "X-Seller-Token header required" }, { status: 401 });
   }
@@ -55,7 +56,7 @@ export async function POST(request) {
 }
 
 export async function PATCH(request) {
-  const token = request.headers.get("x-seller-token");
+  const token = getSellerTokenFromRequest(request);
   if (!token) {
     return NextResponse.json({ error: "X-Seller-Token header required" }, { status: 401 });
   }
