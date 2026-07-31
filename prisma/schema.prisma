@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Seller {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String
+  seller_token       String   @unique
+  location           String
+  country            String
+  flag               String
+  lnbits_invoice_key String
+  payout_note        String?
+  total_sats_earned  Int      @default(0)
+  created_at         DateTime @default(now())
+  items              Item[]
+}
+
+model Item {
+  id              String   @id @default(cuid())
+  seller_id       String
+  seller          Seller   @relation(fields: [seller_id], references: [id])
+  title           String
+  category        String
+  product_type    String
+  description     String
+  price_sats      Int
+  image_url       String?
+  thumbnail_seed  String
+  delivery_method String
+  delivery_value  String
+  active          Boolean  @default(true)
+  created_at      DateTime @default(now())
+  orders          Order[]
+}
+
+model Order {
+  order_id               String    @id @default(cuid())
+  item_id                String
+  item                   Item      @relation(fields: [item_id], references: [id])
+  seller_id              String
+  buyer_session_id       String
+  price_sats             Int
+  checking_id            String
+  payment_request        String
+  status                 String    @default("PENDING")
+  buyer_shipping_address String?
+  buyer_contact          String?
+  created_at             DateTime  @default(now())
+  expires_at             DateTime
+  paid_at                DateTime?
+  settlement_ms          Int?
+}
