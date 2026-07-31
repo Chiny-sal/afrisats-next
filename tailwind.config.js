@@ -17,9 +17,9 @@ module.exports = {
         muted: "#8A8D9A",
       },
       fontFamily: {
-        display: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
-        body: ["var(--font-inter)", "system-ui", "sans-serif"],
-        mono: ["var(--font-ibm-plex-mono)", "monospace"],
+        display: ["Segoe UI", "Arial", "sans-serif"],
+        body: ["Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+        mono: ["SFMono-Regular", "Consolas", "Liberation Mono", "monospace"],
       },
       keyframes: {
         stamp: {
